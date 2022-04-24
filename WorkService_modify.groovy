@@ -60,6 +60,7 @@ public Object onPreExecute(Object dto) {
    String origProjectNo = ""
    String origAccountCode = ""
    BigDecimal actualTotalCost = 0
+   // flags
    boolean isContext = false
    boolean isCostExist = false
    boolean isAuthorised = true
@@ -77,7 +78,9 @@ public Object onPreExecute(Object dto) {
 
    // Get existing Work costing details, Attributes before modify
    /* groovylint-disable-next-line LineLength */
-   (isWork, origEquipmentRef, origWorkGroup, origProjectNo, origAccountCode, actualTotalCost) = getWorkDetails(districtCode, work, useEquipmentNo)
+   (isWork, origEquipmentRef, origWorkGroup, origProjectNo, origAccountCode, actualTotalCost) =
+      getWorkDetails(districtCode, work, useEquipmentNo)
+
    if (!isWork) {
       //Work is not valid - send to Ellipse for standard error
       return null
@@ -93,7 +96,7 @@ public Object onPreExecute(Object dto) {
    / Equipment Reference is mandatory
    if (equipmentRef.isEmpty()) {
       log.error("Equipment Reference is mandatory")
-      /* to return to callerm, throw EnterpriseServiceOperationException */
+      /** to return to the caller, throw EnterpriseServiceOperationException */
       throw new EnterpriseServiceOperationException(
          new ErrorMessageDTO("", "Equipment Reference is mandatory", "equipmentRef", 0, 0)
       )
@@ -118,18 +121,16 @@ public Object onPreExecute(Object dto) {
    /* Determine Account Code */
    /* PreCheck */
    (isContext, employeeId) = getContextDetails(districtCode)
-   isCostExist = costExist()
+   // method costExist() not exist
+   // isCostExist = costExist()
    isAuthorised = getEmployeeAuthority(employeeId))
    (isProject, isCapital, projectAccount) = getProjectDetails(districtCode, projectNo)
 
    /* is Project Changed? */
 
-   if ( !projectNo.equals(origProjectNo) )
-   {
-      if (isCostExist)
-      {
-         if (isAuthorised)
-         {
+   if (!projectNo.equals(origProjectNo) || projectNo.isEmpty()){
+      if (isCostExist){
+         if (isAuthorised){
             if (!projectNo.isEmpty()) {
                if (isCapital) {
                   if (!isProject) {
@@ -140,38 +141,34 @@ public Object onPreExecute(Object dto) {
                      log.error("No Account Code for Capital Project")
                      //throw EnterpriseServiceOperationException to return to caller
                      throw new EnterpriseServiceOperationException(
-                     new ErrorMessageDTO("", "No Account Code for Capital Project", "projectNo", 0, 0))
+                        new ErrorMessageDTO("", "No Account Code for Capital Project", "projectNo", 0, 0))
                   }
                   request.setAccountCode(projectAccount)
                   return null
-               }
-               else {
+               } else {
                   /***************** Standard Ellipse Cost Option Logic ---- getStandardEllipseCodee ****************/
                   return null
                }
             }
-         }
-         else /* User is not authorised to modify account code */
+         } else { /* User is not authorised to modify account code */
             throw new EnterpriseServiceOperationException(
-            new ErrorMessageDTO("", "Costs exist, not authorised to modify Account Code", "accountCode", 0, 0))
-      }
-      else /* Cost does not exist */
-      {
+               new ErrorMessageDTO("", "Costs exist, not authorised to modify Account Code", "accountCode", 0, 0))
+         }
+      } else { /* Cost does not exist */
          if (!projectNo.isEmpty()) {
-            if (isCapital)
-            {
-                  if (!isProject) {
-                     //Project Number is not valid - send to Ellipse for standard error
-                     return null
-                  }
-                  if (projectAccount.isEmpty()) {
-                     log.error("No Account Code for Capital Project")
-                     //throw EnterpriseServiceOperationException to return to caller
-                     throw new EnterpriseServiceOperationException(
-                     new ErrorMessageDTO("", "No Account Code for Capital Project", "projectNo", 0, 0))
-                  }
-                  request.setAccountCode(projectAccount)
+            if (isCapital){
+               if (!isProject) {
+                  //Project Number is not valid - send to Ellipse for standard error
                   return null
+               }
+               if (projectAccount.isEmpty()) {
+                  log.error("No Account Code for Capital Project")
+                  //throw EnterpriseServiceOperationException to return to caller
+                  throw new EnterpriseServiceOperationException(
+                  new ErrorMessageDTO("", "No Account Code for Capital Project", "projectNo", 0, 0))
+               }
+               request.setAccountCode(projectAccount)
+               return null
             }
             else {
                   /***************** Standard Ellipse Cost Option Logic ---- getStandardEllipseCodee ****************/
@@ -181,99 +178,44 @@ public Object onPreExecute(Object dto) {
       }
    }
 
-/* Project not changed or cleared
-
-   if (!accountCode.equals(origAccountCode))
-   {
-      if (isCostExist)
-         {
-            if (isAuthorised)
-            {
-               if (!accountCode.isEmpty()) {
-                  if (isValidAccount) {
-                     log.info("Account Code entered ${accountCode}")
-                     //Accept entered Account Code
-                     return null
-                  }
-                  else {
-                     throw new EnterpriseServiceOperationException(
-                     new ErrorMessageDTO("", "Invalid Account Code", "accountCode", 0, 0))
-                  }
-               }
-            }
-            else /* User is not authorised to modify account code */
-               throw new EnterpriseServiceOperationException(
-               new ErrorMessageDTO("", "Costs exist, not authorised to modify Account Code", "accountCode", 0, 0))
-         }
-         else /* Cost does not exist */
-         {
+   /* Project not changed or cleared */
+   if (!accountCode.equals(origAccountCode)){
+      if (isCostExist){
+         if (isAuthorised){
             if (!accountCode.isEmpty()) {
                if (isValidAccount) {
                   log.info("Account Code entered ${accountCode}")
                   //Accept entered Account Code
                   return null
-               }
-               else {
+               } else {
                   throw new EnterpriseServiceOperationException(
-                  new ErrorMessageDTO("", "Invalid Account Code", "accountCode", 0, 0))
+                     new ErrorMessageDTO("", "Invalid Account Code", "accountCode", 0, 0))
                }
             }
-         }
-   }
-
-/* Account code not changed or cleared
-
-   if (!equipmentRef.equals(origEquipmentRef) ||
-      !workGroup.equals(origWorkGroup)
-      )
-   {
-      if (isCostExist)
-         {
-            if (isAuthorised)
-            {
-               /* Derive Account Code */
-               (isEquipment, equipmentAccount) = getEquipmentDetails(equipmentRef)
-
-               if (equipmentAccount.length() < ORG_UNIT_LEN + PROD_OP_ACT_LEN) {
-                  log.error("Equipment Account invalid for deriving WO Account")
-                  //throw EnterpriseServiceOperationException to return to caller
-                  throw new EnterpriseServiceOperationException(
-                  new ErrorMessageDTO("", "Equipment Account invalid for deriving WO Account", "equipmentRef", 0, 0))
-               }
-
-               (isWorkGroup, workGroupAccount) = getWorkGroupDetails(workGroup)
-
-               if (workGroupAccount.length() < ORG_UNIT_LEN) {
-                  log.error("Work Group Account invalid for deriving WO Account")
-                  //throw EnterpriseServiceOperationException to return to caller
-                  throw new EnterpriseServiceOperationException(
-                  new ErrorMessageDTO("", "Work Group Account invalid for deriving WO Account", "workGroup", 0, 0))
-               }
-               //Derive Account Code - chars 1 to 3 of Work Group Account + chars 4 to 10 of Equipment account
-               costAccount = workGroupAccount.substring(0, ORG_UNIT_LEN) + equipmentAccount.substring(ORG_UNIT_LEN, ORG_UNIT_LEN + PROD_OP_ACT_LEN)
-
-               if (!accountCode.equals(costAccount) && !costAccount.isEmpty()) {
-                  request.setAccountCode(costAccount)
-                  log.info("Account Code set to derived value ${costAccount}")
-                  /************** Throw warning *************/
-                  return null
-               }
-               else (accountCode.equals(costAccount) && !costAccount.isEmpty()) {
-                  request.setAccountCode(costAccount)
-                  log.info("Account Code set to derived value ${costAccount}")
-                  return null
-               }
-               else {
-                  throw new EnterpriseServiceOperationException(
-                  new ErrorMessageDTO("", "derived Account Code is cleared", "accountCode", 0, 0))
-               }
-            } /* User is not authorised to modify account code */
-            else
-               throw new EnterpriseServiceOperationException(
+         } else {/* User is not authorised to modify account code */
+            throw new EnterpriseServiceOperationException(
                new ErrorMessageDTO("", "Costs exist, not authorised to modify Account Code", "accountCode", 0, 0))
          }
-         else  /* Cost does not exist */
-         {
+      } else { /* Cost does not exist */
+         if (!accountCode.isEmpty()) {
+            if (isValidAccount) {
+               log.info("Account Code entered ${accountCode}")
+               //Accept entered Account Code
+               return null
+            } else {
+               throw new EnterpriseServiceOperationException(
+                  new ErrorMessageDTO("", "Invalid Account Code", "accountCode", 0, 0))
+            }
+         }
+      }
+   }
+
+   /* Account code not changed or cleared */
+   if (!equipmentRef.equals(origEquipmentRef) ||
+      !workGroup.equals(origWorkGroup)
+      ){
+      if (isCostExist) {
+         if (isAuthorised) {
             /* Derive Account Code */
             (isEquipment, equipmentAccount) = getEquipmentDetails(equipmentRef)
 
@@ -281,7 +223,7 @@ public Object onPreExecute(Object dto) {
                log.error("Equipment Account invalid for deriving WO Account")
                //throw EnterpriseServiceOperationException to return to caller
                throw new EnterpriseServiceOperationException(
-               new ErrorMessageDTO("", "Equipment Account invalid for deriving WO Account", "equipmentRef", 0, 0))
+                  new ErrorMessageDTO("", "Equipment Account invalid for deriving WO Account", "equipmentRef", 0, 0))
             }
 
             (isWorkGroup, workGroupAccount) = getWorkGroupDetails(workGroup)
@@ -290,7 +232,7 @@ public Object onPreExecute(Object dto) {
                log.error("Work Group Account invalid for deriving WO Account")
                //throw EnterpriseServiceOperationException to return to caller
                throw new EnterpriseServiceOperationException(
-               new ErrorMessageDTO("", "Work Group Account invalid for deriving WO Account", "workGroup", 0, 0))
+                  new ErrorMessageDTO("", "Work Group Account invalid for deriving WO Account", "workGroup", 0, 0))
             }
             //Derive Account Code - chars 1 to 3 of Work Group Account + chars 4 to 10 of Equipment account
             costAccount = workGroupAccount.substring(0, ORG_UNIT_LEN) + equipmentAccount.substring(ORG_UNIT_LEN, ORG_UNIT_LEN + PROD_OP_ACT_LEN)
@@ -300,23 +242,61 @@ public Object onPreExecute(Object dto) {
                log.info("Account Code set to derived value ${costAccount}")
                /************** Throw warning *************/
                return null
-            }
-            else (accountCode.equals(costAccount) && !costAccount.isEmpty()) {
+            } else if (accountCode.equals(costAccount) && !costAccount.isEmpty()) {
                request.setAccountCode(costAccount)
                log.info("Account Code set to derived value ${costAccount}")
                return null
-            }
-            else {
+            } else {
                throw new EnterpriseServiceOperationException(
-               new ErrorMessageDTO("", "derived Account Code is cleared", "accountCode", 0, 0))
+                  new ErrorMessageDTO("", "derived Account Code is cleared", "accountCode", 0, 0))
             }
+         } else { /* User is not authorised to modify account code */
+            throw new EnterpriseServiceOperationException(
+               new ErrorMessageDTO("", "Costs exist, not authorised to modify Account Code", "accountCode", 0, 0))
          }
+      } else {  /* Cost does not exist */
+
+         /* Derive Account Code */
+         (isEquipment, equipmentAccount) = getEquipmentDetails(equipmentRef)
+
+         if (equipmentAccount.length() < ORG_UNIT_LEN + PROD_OP_ACT_LEN) {
+            log.error("Equipment Account invalid for deriving WO Account")
+            //throw EnterpriseServiceOperationException to return to caller
+            throw new EnterpriseServiceOperationException(
+               new ErrorMessageDTO("", "Equipment Account invalid for deriving WO Account", "equipmentRef", 0, 0))
+         }
+
+         (isWorkGroup, workGroupAccount) = getWorkGroupDetails(workGroup)
+
+         if (workGroupAccount.length() < ORG_UNIT_LEN) {
+            log.error("Work Group Account invalid for deriving WO Account")
+            //throw EnterpriseServiceOperationException to return to caller
+            throw new EnterpriseServiceOperationException(
+               new ErrorMessageDTO("", "Work Group Account invalid for deriving WO Account", "workGroup", 0, 0))
+         }
+         //Derive Account Code - chars 1 to 3 of Work Group Account + chars 4 to 10 of Equipment account
+         costAccount = workGroupAccount.substring(0, ORG_UNIT_LEN) + equipmentAccount.substring(ORG_UNIT_LEN, ORG_UNIT_LEN + PROD_OP_ACT_LEN)
+
+         if (!accountCode.equals(costAccount) && !costAccount.isEmpty()) {
+            request.setAccountCode(costAccount)
+            log.info("Account Code set to derived value ${costAccount}")
+            /************** Throw warning *************/
+            return null
+         } else if (accountCode.equals(costAccount) && !costAccount.isEmpty()) {
+            request.setAccountCode(costAccount)
+            log.info("Account Code set to derived value ${costAccount}")
+            return null
+         } else {
+            throw new EnterpriseServiceOperationException(
+            new ErrorMessageDTO("", "derived Account Code is cleared", "accountCode", 0, 0))
+         }
+      }
       if (accountCode.isEmpty())
       {
          throw new EnterpriseServiceOperationException(
          new ErrorMessageDTO("", "Invalid Account Code/Empty", "accountCode", 0, 0))
       }
-   }
+      }
 
    /**
    * Read the Work to check for modified fields
@@ -361,12 +341,14 @@ public Object onPreExecute(Object dto) {
       boolean isContext = false
       String employeeId = ""
       try {
-         ContextServiceFetchContextReplyDTO contextReply = tools.service.get("Context").fetchContext({
-         it.district = districtCode})
+         ContextServiceFetchContextReplyDTO contextReply =
+            tools.service.get("Context").fetchContext({
+               it.district = districtCode
+            })
          employeeId = contextReply.getEmployeeId()
          isContext = true
       } catch (EnterpriseServiceOperationException e) {
-      log.info("Cannot get Context to determine Employee Id")
+         log.info("Cannot get Context to determine Employee Id")
       }
       return [isContext, employeeId]
    }
@@ -380,13 +362,18 @@ public Object onPreExecute(Object dto) {
       log.info("getEmployeeAuthority ${employeeId}")
       boolean isAuthorised = true
       try {
-         TableServiceReadReplyDTO tableReply = tools.service.get("Table").read({
-         it.tableType = MSF010_TABLE_TYPE_XX
-         it.tableCode = MSF010_TABLE_TYPE_WKR})
+         // ambigous logic
+         TableServiceReadReplyDTO tableReply =
+            tools.service.get("Table").read({
+               it.tableType = MSF010_TABLE_TYPE_XX
+               it.tableCode = MSF010_TABLE_TYPE_WKR
+            })
          isAuthorised = false
-         TableServiceReadReplyDTO codeReply = tools.service.get("Table").read({
-         it.tableType = MSF010_TABLE_TYPE_WKR
-         it.tableCode = employeeId})
+         TableServiceReadReplyDTO codeReply =
+            tools.service.get("Table").read({
+               it.tableType = MSF010_TABLE_TYPE_WKR
+               it.tableCode = employeeId
+            })
          isAuthorised = true
       } catch (EnterpriseServiceOperationException e) {
          log.error("Employee not authorised to change costing")
