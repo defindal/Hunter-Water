@@ -1,13 +1,14 @@
+/* groovylint-disable LineLength */
 /**
 * @author Ventyx 2014
 
 * Pre-Modify:
-* Apply the costing solution for Work Orders to obtain a default Account Code
+* Apply the costing solution for Work to obtain a default Account Code
 */
 
 import com.mincom.ellipse.hook.hooks.ServiceHook
-import com.mincom.enterpriseservice.ellipse.dependant.dto.WorkOrderDTO
-import com.mincom.enterpriseservice.ellipse.workorder.WorkOrderServiceCreateRequestDTO
+import com.mincom.enterpriseservice.ellipse.dependant.dto.WorkDTO
+import com.mincom.enterpriseservice.ellipse.work.WorkServiceCreateRequestDTO
 import com.mincom.enterpriseservice.ellipse.standardjob.StandardJobServiceReadReplyDTO
 import com.mincom.enterpriseservice.ellipse.project.ProjectServiceReadReplyDTO
 import com.mincom.enterpriseservice.ellipse.equipment.EquipmentServiceReadReplyDTO
@@ -15,7 +16,7 @@ import com.mincom.enterpriseservice.ellipse.workgroup.WorkGroupServiceReadReplyD
 import com.mincom.enterpriseservice.ellipse.ErrorMessageDTO
 import com.mincom.enterpriseservice.exception.*
 
-public class WorkOrderService_create extends ServiceHook {
+public class WorkService_create extends ServiceHook {
 
 /*
 * IMPORTANT!
@@ -30,15 +31,15 @@ private static final Integer PROD_OP_ACT_LEN = 7
 @Override
 public Object onPreExecute(Object dto) {
 
-   log.info("WorkOrderService_modify onPreExecute - version: ${version}")
+   log.info("WorkService_modify onPreExecute - version: ${version}")
 
-   WorkOrderServiceModifyRequestDTO request = dto
+   WorkServiceModifyRequestDTO request = dto
 
    //String districtCode = request.getDistrictCode()?request.getDistrictCode().trim():""
 
-   WorkOrderDTO workOrder = request.getWorkOrder()
+   WorkDTO work = request.getWork()
 
-   String copyWorkOrder = request.getCopyWorkOrder()?request.getCopyWorkOrder().toString().trim():""
+   String copyWork = request.getCopyWork()?request.getCopyWork().toString().trim():""
    String districtCode = request.getDistrictCode()?request.getDistrictCode().trim():""
    String standardJob = request.getStdJobNo()?request.getStdJobNo().trim():""
    String projectNo = request.getProjectNo()?request.getProjectNo().trim():""
@@ -66,17 +67,17 @@ public Object onPreExecute(Object dto) {
    String workGroupAccount = ""
    String costAccount = ""
 
-   // If copying a Work Order, then have to bypass the rest of the processing
-   if (copyWorkOrder) {
-      log.info("Copying work order ${copyWorkOrder}")
+   // If copying a Work, then have to bypass the rest of the processing
+   if (copyWork) {
+      log.info("Copying work ${copyWork}")
       return null
    }
    // If Standard Job entered, get default values from Standard Job
    if (standardJob) {
       log.info("Standard Job entered")
-      // ini method darimana ? 
+      // ini method darimana ?
       // StandardJobServiceReadReplyDTO ?
-      (isStandardJob, sjEquipmentRef, sjWorkGroup, sjProjectNo, sjAccountCode) = 
+      (isStandardJob, sjEquipmentRef, sjWorkGroup, sjProjectNo, sjAccountCode) =
          getStandardJobDetails(districtCode, standardJob)
 
       if (!isStandardJob) {
@@ -106,13 +107,13 @@ public Object onPreExecute(Object dto) {
       new ErrorMessageDTO("", "Work Group is mandatory", "workGroup", 0, 0))
    }
 
-   log.info("Work Order ${districtCode}${workOrder.toString()}")
+   log.info("Work ${districtCode}${work.toString()}")
 
-   // Get existing Work Order costing details, Attributes before modify
+   // Get existing Work costing details, Attributes before modify
    /* groovylint-disable-next-line LineLength */
-   (isWorkOrder, origEquipmentRef, origWorkGroup, origProjectNo, origAccountCode, actualTotalCost) = getWorkOrderDetails(districtCode, workOrder, useEquipmentNo)
-   if (!isWorkOrder) {
-      //Work Order is not valid - send to Ellipse for standard error
+   (isWork, origEquipmentRef, origWorkGroup, origProjectNo, origAccountCode, actualTotalCost) = getWorkDetails(districtCode, work, useEquipmentNo)
+   if (!isWork) {
+      //Work is not valid - send to Ellipse for standard error
       return null
    }
 
@@ -182,39 +183,39 @@ public Object onPreExecute(Object dto) {
    }
 
    /**
-   * Read the Work Order to check for modified fields
-   * @param District Code, Work Order
+   * Read the Work to check for modified fields
+   * @param District Code, Work, Use Equipment Number
    * @return Project Number, Account Code, Equipment Reference, Work Group
    */
    /* groovylint-disable-next-line NglParseError */
-   private def getWorkOrderDetails(String districtCode, WorkOrderDTO workOrder, boolean useEquipmentNo){
-      log.info("getWorkOrderDetails ${districtCode}${workOrder}")
-      boolean isWorkOrder = false
+   private def getWorkDetails(String districtCode, WorkDTO work, boolean useEquipmentNo){
+      log.info("getWorkDetails ${districtCode}${work}")
+      boolean isWork = false
       String equipmentRef = ""
       String workGroup = ""
       String projectNo = ""
       String accountCode = ""
       BigDecimal actualTotalCost = 0
       try {
-         WorkOrderServiceReadReplyDTO workOrderReply = 
-            tools.service.get("WorkOrder").read({
+         WorkServiceReadReplyDTO workReply =
+            tools.service.get("Work").read({
                it.districtCode = districtCode
-               it.workOrder = workOrder})
+               it.work = work})
 
          if (useEquipmentNo) {
-            equipmentRef = workOrderReply.getEquipmentNo()?workOrderReply.getEquipmentNo().trim():""
+            equipmentRef = workReply.getEquipmentNo()?workReply.getEquipmentNo().trim():""
          } else {
-            equipmentRef = workOrderReply.getEquipmentRef()?workOrderReply.getEquipmentRef().trim():""
+            equipmentRef = workReply.getEquipmentRef()?workReply.getEquipmentRef().trim():""
          }
-         workGroup = workOrderReply.getWorkGroup()?workOrderReply.getWorkGroup().trim():""
-         projectNo = workOrderReply.getProjectNo()?workOrderReply.getProjectNo().trim():""
-         accountCode = workOrderReply.getAccountCode()?workOrderReply.getAccountCode().trim():""
-         actualTotalCost = workOrderReply.actualEquipmentCost + workOrderReply.actualLabCost + workOrderReply.actualMatCost + workOrderReply.actualOtherCost
-         isWorkOrder = true
+         workGroup = workReply.getWorkGroup()?workReply.getWorkGroup().trim():""
+         projectNo = workReply.getProjectNo()?workReply.getProjectNo().trim():""
+         accountCode = workReply.getAccountCode()?workReply.getAccountCode().trim():""
+         actualTotalCost = workReply.actualEquipmentCost + workReply.actualLabCost + workReply.actualMatCost + workReply.actualOtherCost
+         isWork = true
       } catch (EnterpriseServiceOperationException e) {
-      log.error("Work Order not valid")
+         log.error("Work not valid")
       }
-      return [isWorkOrder, equipmentRef, workGroup, projectNo, accountCode, actualTotalCost]
+      return [isWork, equipmentRef, workGroup, projectNo, accountCode, actualTotalCost]
    }
 
    private def getProjectDetails (String districtCode, String projectNo) {

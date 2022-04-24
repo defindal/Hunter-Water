@@ -3,13 +3,13 @@
 * @author Ventyx 2014
 *
 * Pre-Modify:
-* Apply the costing solution for Work Orders to obtain a default Account Code
+* Apply the costing solution for Work to obtain a default Account Code
 */
 
 import com.mincom.ellipse.hook.hooks.ServiceHook
-import com.mincom.enterpriseservice.ellipse.dependant.dto.WorkOrderDTO
-import com.mincom.enterpriseservice.ellipse.workorder.WorkOrderServiceModifyRequestDTO
-import com.mincom.enterpriseservice.ellipse.workorder.WorkOrderServiceReadReplyDTO
+import com.mincom.enterpriseservice.ellipse.dependant.dto.WorkDTO
+import com.mincom.enterpriseservice.ellipse.work.WorkServiceModifyRequestDTO
+import com.mincom.enterpriseservice.ellipse.work.WorkServiceReadReplyDTO
 import com.mincom.enterpriseservice.ellipse.context.ContextServiceFetchContextReplyDTO
 import com.mincom.enterpriseservice.ellipse.table.TableServiceReadReplyDTO
 import com.mincom.enterpriseservice.ellipse.project.ProjectServiceReadReplyDTO
@@ -18,7 +18,7 @@ import com.mincom.enterpriseservice.ellipse.workgroup.WorkGroupServiceReadReplyD
 import com.mincom.enterpriseservice.ellipse.ErrorMessageDTO
 import com.mincom.enterpriseservice.exception.*
 
-public class WorkOrderService_modify extends ServiceHook {
+public class WorkService_modify extends ServiceHook {
 
 /*
 * IMPORTANT!
@@ -35,13 +35,13 @@ private static final Integer PROD_OP_ACT_LEN = 7
 @Override
 public Object onPreExecute(Object dto) {
 
-   log.info("WorkOrderService_modify onPreExecute - version: ${version}")
+   log.info("WorkService_modify onPreExecute - version: ${version}")
 
-   WorkOrderServiceModifyRequestDTO request = dto
+   WorkServiceModifyRequestDTO request = dto
 
    String districtCode = request.getDistrictCode()?request.getDistrictCode().trim():""
 
-   WorkOrderDTO workOrder = request.getWorkOrder()
+   WorkDTO work = request.getWork()
 
    boolean useEquipmentNo = false
    String projectNo = request.getProjectNo()?.trim()
@@ -63,7 +63,7 @@ public Object onPreExecute(Object dto) {
    boolean isContext = false
    boolean isCostExist = false
    boolean isAuthorised = true
-   boolean isWorkOrder = false
+   boolean isWork = false
    boolean isProject = false
    boolean isCapital = false
    boolean isEquipment = false
@@ -73,13 +73,13 @@ public Object onPreExecute(Object dto) {
    String equipmentAccount = ""
    String workGroupAccount = ""
 
-   log.info("Work Order ${districtCode}${workOrder.toString()}")
+   log.info("Work ${districtCode}${work.toString()}")
 
-   // Get existing Work Order costing details, Attributes before modify
+   // Get existing Work costing details, Attributes before modify
    /* groovylint-disable-next-line LineLength */
-   (isWorkOrder, origEquipmentRef, origWorkGroup, origProjectNo, origAccountCode, actualTotalCost) = getWorkOrderDetails(districtCode, workOrder, useEquipmentNo)
-   if (!isWorkOrder) {
-      //Work Order is not valid - send to Ellipse for standard error
+   (isWork, origEquipmentRef, origWorkGroup, origProjectNo, origAccountCode, actualTotalCost) = getWorkDetails(districtCode, work, useEquipmentNo)
+   if (!isWork) {
+      //Work is not valid - send to Ellipse for standard error
       return null
    }
    // Default any attributes not sent in request
@@ -106,7 +106,7 @@ public Object onPreExecute(Object dto) {
       throw new EnterpriseServiceOperationException(
       new ErrorMessageDTO("", "Work Group is mandatory", "workGroup", 0, 0))
    }
-   // Check if Work Order costing details will change , Otherwise skip all process
+   // Check if Work costing details will change , Otherwise skip all process
    if (equipmentRef.equals(origEquipmentRef) &&
       workGroup.equals(origWorkGroup) &&
       projectNo.equals(origProjectNo) &&
@@ -319,36 +319,36 @@ public Object onPreExecute(Object dto) {
    }
 
    /**
-   * Read the Work Order to check for modified fields
-   * @param District Code, Work Order
+   * Read the Work to check for modified fields
+   * @param District Code, Work , Use Equipment Number
    * @return Project Number, Account Code, Equipment Reference, Work Group
    */
-   private def getWorkOrderDetails (String districtCode, WorkOrderDTO workOrder, boolean useEquipmentNo) {
-      log.info("getWorkOrderDetails ${districtCode}${workOrder}")
-      boolean isWorkOrder = false
+   private def getWorkDetails (String districtCode, WorkDTO work, boolean useEquipmentNo) {
+      log.info("getWorkDetails ${districtCode}${work}")
+      boolean isWork = false
       String equipmentRef = ""
       String workGroup = ""
       String projectNo = ""
       String accountCode = ""
       BigDecimal actualTotalCost = 0
       try {
-         WorkOrderServiceReadReplyDTO workOrderReply = tools.service.get("WorkOrder").read({
+         WorkServiceReadReplyDTO workReply = tools.service.get("Work").read({
          it.districtCode = districtCode
-         it.workOrder = workOrder})
+         it.work = work})
          if (useEquipmentNo) {
-            equipmentRef = workOrderReply.getEquipmentNo()?workOrderReply.getEquipmentNo().trim():""
+            equipmentRef = workReply.getEquipmentNo()?workReply.getEquipmentNo().trim():""
          } else {
-            equipmentRef = workOrderReply.getEquipmentRef()?workOrderReply.getEquipmentRef().trim():""
+            equipmentRef = workReply.getEquipmentRef()?workReply.getEquipmentRef().trim():""
          }
-         workGroup = workOrderReply.getWorkGroup()?workOrderReply.getWorkGroup().trim():""
-         projectNo = workOrderReply.getProjectNo()?workOrderReply.getProjectNo().trim():""
-         accountCode = workOrderReply.getAccountCode()?workOrderReply.getAccountCode().trim():""
-         actualTotalCost = workOrderReply.actualEquipmentCost + workOrderReply.actualLabCost + workOrderReply.actualMatCost + workOrderReply.actualOtherCost
-         isWorkOrder = true
+         workGroup = workReply.getWorkGroup()?workReply.getWorkGroup().trim():""
+         projectNo = workReply.getProjectNo()?workReply.getProjectNo().trim():""
+         accountCode = workReply.getAccountCode()?workReply.getAccountCode().trim():""
+         actualTotalCost = workReply.actualEquipmentCost + workReply.actualLabCost + workReply.actualMatCost + workReply.actualOtherCost
+         isWork = true
       } catch (EnterpriseServiceOperationException e) {
-      log.error("Work Order not valid")
+      log.error("Work not valid")
       }
-      return [isWorkOrder, equipmentRef, workGroup, projectNo, accountCode, actualTotalCost]
+      return [isWork, equipmentRef, workGroup, projectNo, accountCode, actualTotalCost]
    }
 
    /**
