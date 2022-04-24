@@ -33,7 +33,7 @@ public Object onPreExecute(Object dto) {
 
    log.info("WorkService_modify onPreExecute - version: ${version}")
 
-   WorkServiceModifyRequestDTO request = dto
+   WorkServiceCreateRequestDTO request = dto
 
    //String districtCode = request.getDistrictCode()?request.getDistrictCode().trim():""
 
@@ -130,56 +130,61 @@ public Object onPreExecute(Object dto) {
          return null
          if (isCapital)
          {
-         if (projectAccount.isEmpty()) {
-            log.error("No Account Code for Capital Project")
-            //throw EnterpriseServiceOperationException to return to caller
-            throw new EnterpriseServiceOperationException(
-            new ErrorMessageDTO("", "No Account Code for Capital Project", "projectNo", 0, 0))
-         }
-         request.setAccountCode(projectAccount)
-       } else {
-          // Standard Ellipse Cost logic
-          return null
+            if (projectAccount.isEmpty()) {
+               log.error("No Account Code for Capital Project")
+               //throw EnterpriseServiceOperationException to return to caller
+               throw new EnterpriseServiceOperationException(
+                  new ErrorMessageDTO("", "No Account Code for Capital Project", "projectNo", 0, 0))
+            }else{
+               request.setAccountCode(projectAccount)
+            }
+         } else {
+            // Standard Ellipse Cost logic
+            return null
          }
       }
+   } else {
+      log.info("Project Number is not entered")
+      // Check if Account Code entered
+      if (accountCode) {
+         log.info("Account Code entered ${accountCode}")
+         //Accept entered Account Code
+         return null
+      } else {
+         log.info("Account Code is not entered")
+         (isEquipment, equipmentAccount) = getEquipmentDetails(equipmentRef)
 
-   // Check if Account Code entered
-   if (accountCode) {
-      log.info("Account Code entered ${accountCode}")
-      //Accept entered Account Code
-      return null
-   }
+         if (!isEquipment) {
+            //Equipment Reference is not valid - send to Ellipse for standard error
+            return null
+         } else {
+            // Equipment is entered
+            if (equipmentAccount.length() < ORG_UNIT_LEN + PROD_OP_ACT_LEN) {
+               log.error("Equipment Account invalid for deriving WO Account")
+               //throw EnterpriseServiceOperationException to return to caller
+               throw new EnterpriseServiceOperationException(
+               new ErrorMessageDTO("", "Equipment Account invalid for deriving WO Account", "equipmentRef", 0, 0))
+            }
 
-   (isEquipment, equipmentAccount) = getEquipmentDetails(equipmentRef)
-
-   if (!isEquipment) {
-      //Equipment Reference is not valid - send to Ellipse for standard error
-      return null
-   }
-   if (equipmentAccount.length() < ORG_UNIT_LEN + PROD_OP_ACT_LEN) {
-      log.error("Equipment Account invalid for deriving WO Account")
-      //throw EnterpriseServiceOperationException to return to caller
-      throw new EnterpriseServiceOperationException(
-      new ErrorMessageDTO("", "Equipment Account invalid for deriving WO Account", "equipmentRef", 0, 0))
-   }
-
-   (isWorkGroup, workGroupAccount) = getWorkGroupDetails(workGroup)
-   if (!isWorkGroup) {
-      //Work Group is not valid - send to Ellipse for standard error
-      return null
-   }
-   if (workGroupAccount.length() < ORG_UNIT_LEN) {
-      log.error("Work Group Account invalid for deriving WO Account")
-      //throw EnterpriseServiceOperationException to return to caller
-      throw new EnterpriseServiceOperationException(
-      new ErrorMessageDTO("", "Work Group Account invalid for deriving WO Account", "workGroup", 0, 0))
-   }
-   //Derive Account Code - chars 1 to 3 of Work Group Account + chars 4 to 10 of Equipment account
-   costAccount = workGroupAccount.substring(0, ORG_UNIT_LEN) + equipmentAccount.substring(ORG_UNIT_LEN, ORG_UNIT_LEN + PROD_OP_ACT_LEN)
-   //Set Account Code to derived value
-   request.setAccountCode(costAccount)
-   log.info("Account Code set to derived value ${costAccount}")
-   return null
+            (isWorkGroup, workGroupAccount) = getWorkGroupDetails(workGroup)
+            if (!isWorkGroup) {
+               //Work Group is not valid - send to Ellipse for standard error
+               return null
+            }
+            if (workGroupAccount.length() < ORG_UNIT_LEN) {
+               log.error("Work Group Account invalid for deriving WO Account")
+               //throw EnterpriseServiceOperationException to return to caller
+               throw new EnterpriseServiceOperationException(
+               new ErrorMessageDTO("", "Work Group Account invalid for deriving WO Account", "workGroup", 0, 0))
+            }
+            //Derive Account Code - chars 1 to 3 of Work Group Account + chars 4 to 10 of Equipment account
+            costAccount = workGroupAccount.substring(0, ORG_UNIT_LEN) + equipmentAccount.substring(ORG_UNIT_LEN, ORG_UNIT_LEN + PROD_OP_ACT_LEN)
+            //Set Account Code to derived value
+            request.setAccountCode(costAccount)
+            log.info("Account Code set to derived value ${costAccount}")
+            return null
+         }
+      }
    }
 
    /**
@@ -224,9 +229,12 @@ public Object onPreExecute(Object dto) {
       boolean isCapital = false
       String accountCode = ""
       try {
-         ProjectServiceReadReplyDTO projectReply = tools.service.get("Project").read({
-         it.districtCode = districtCode
-         it.projectNo = projectNo})
+         ProjectServiceReadReplyDTO projectReply =
+            tools.service.get("Project").read({
+               it.districtCode = districtCode
+               it.projectNo = projectNo
+            })
+
          isCapital = projectReply.getCapitalSw()
          if(isCapital) {
             accountCode = projectReply.getAccountCode()?projectReply.getAccountCode().trim():""
@@ -243,8 +251,10 @@ public Object onPreExecute(Object dto) {
       boolean isEquipment = false
       String accountCode = ""
       try {
-         EquipmentServiceReadReplyDTO equipmentReply = tools.service.get("Equipment").read({
-         it.equipmentRef = equipmentRef})
+         EquipmentServiceReadReplyDTO equipmentReply =
+            tools.service.get("Equipment").read({
+               it.equipmentRef = equipmentRef
+            })
          accountCode = equipmentReply.getAccountCode()?equipmentReply.getAccountCode().trim():""
          isEquipment = true
       } catch (EnterpriseServiceOperationException e) {
@@ -263,8 +273,10 @@ public Object onPreExecute(Object dto) {
       boolean isWorkGroup = false
       String accountCode = ""
       try {
-         WorkGroupServiceReadReplyDTO workGroupReply = tools.service.get("WorkGroup").read({
-         it.workGroup = workGroup})
+         WorkGroupServiceReadReplyDTO workGroupReply =
+            tools.service.get("WorkGroup").read({
+               it.workGroup = workGroup
+            })
          accountCode = workGroupReply.getAccountCode()?workGroupReply.getAccountCode().trim():""
          isWorkGroup = true
       } catch (EnterpriseServiceOperationException e) {
