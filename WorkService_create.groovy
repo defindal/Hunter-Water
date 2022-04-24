@@ -75,8 +75,7 @@ public Object onPreExecute(Object dto) {
    // If Standard Job entered, get default values from Standard Job
    if (standardJob) {
       log.info("Standard Job entered")
-      // ini method darimana ?
-      // StandardJobServiceReadReplyDTO ?
+      
       (isStandardJob, sjEquipmentRef, sjWorkGroup, sjProjectNo, sjAccountCode) =
          getStandardJobDetails(districtCode, standardJob)
 
@@ -283,6 +282,39 @@ public Object onPreExecute(Object dto) {
          log.error("Work Group not valid")
       }
       return [isWorkGroup, accountCode]
+   }
+
+   private def private def getStandardJobDetails (String districtCode, String standardJob) {
+      log.info("getStandardJobDetails ${districtCode}${standardJob}")
+
+      boolean isStandardJob = false
+      String workGroup = ""
+      String projectNo = ""
+      String accountCode = ""
+      String equipmentRef = ""
+      String equipmentNo = ""
+
+      try {
+         StandardJobServiceReadReplyDTO standardJobReply =
+            tools.service.get("StandardJob").read({
+               it.districtCode = districtCode
+               it.standardJob = standardJob
+            })
+
+         workGroup = standardJobReply.getWorkGroup()?standardJobReply.getWorkGroup().trim():""
+         projectNo = standardJobReply.getProjectNo()?standardJobReply.getProjectNo().trim():""
+         accountCode = standardJobReply.getAccountCode()?standardJobReply.getAccountCode().trim():""
+         equipmentRef = standardJobReply.getEquipmentRef()?standardJobReply.getEquipmentRef().trim():""
+         equipmentNo = standardJobReply.getEquipmentNo()?standardJobReply.getEquipmentNo().trim():""
+
+         // Use Equipment Number if Equipment Reference is not supplied
+         equipmentRef = equipmentRef?equipmentRef:equipmentNo
+         isStandardJob = true
+      } catch (EnterpriseServiceOperationException e) {
+         log.error("Standard Job not valid")
+      }
+
+      return [isStandardJob, equipmentRef, workGroup, projectNo, accountCode]
    }
 
 }

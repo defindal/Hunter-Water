@@ -121,7 +121,7 @@ public Object onPreExecute(Object dto) {
    /* Determine Account Code */
    /* PreCheck */
    (isContext, employeeId) = getContextDetails(districtCode)
-   // method costExist() not exist
+   // method costExist() couldnt be found
    // isCostExist = costExist()
    isAuthorised = getEmployeeAuthority(employeeId))
    (isProject, isCapital, projectAccount) = getProjectDetails(districtCode, projectNo)
