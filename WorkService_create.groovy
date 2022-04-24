@@ -75,7 +75,7 @@ public Object onPreExecute(Object dto) {
    // If Standard Job entered, get default values from Standard Job
    if (standardJob) {
       log.info("Standard Job entered")
-      
+
       (isStandardJob, sjEquipmentRef, sjWorkGroup, sjProjectNo, sjAccountCode) =
          getStandardJobDetails(districtCode, standardJob)
 
